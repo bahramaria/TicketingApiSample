@@ -2,18 +2,21 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
+using System.Runtime.InteropServices;
 using System.Security.Claims;
 
 using TicketingSystem.API.Data;
 using TicketingSystem.API.DTOs;
 using TicketingSystem.API.Models;
+using TicketingSystem.API.Services;
+using TicketingSystem.API.Services.Interfaces;
 
 namespace TicketingSystem.API.Controllers;
 
 [Authorize]
 [ApiController]
 [Route("Tickets")]
-public class TicketsController(AppDbContext context) : ControllerBase
+public class TicketsController(AppDbContext context, ITicketService ticketService) : ControllerBase
 {
     private Guid GetUserId() => Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
@@ -21,32 +24,27 @@ public class TicketsController(AppDbContext context) : ControllerBase
     [HttpPost]
     public async Task<IActionResult> Create(TicketCreateDto dto)
     {
-        var ticket = new Ticket
-        {
-            Title = dto.Title,
-            Description = dto.Description,
-            Priority = dto.Priority,
-            CreatedByUserId = GetUserId()
-        };
-        context.Tickets.Add(ticket);
-        await context.SaveChangesAsync();
+        var ticket = await ticketService.CreateAsync(dto, GetUserId());
         return Ok(ticket);
     }
 
     [Authorize(Roles = "Employee")]
     [HttpGet("My")]
     public async Task<IActionResult> GetMyTickets()
-        => Ok(await context.Tickets.Where(t => t.CreatedByUserId == GetUserId()).ToListAsync());
+    {
+        var tickets = await ticketService.GetByUserIdAsync(GetUserId());
+        return Ok(tickets);
+    }
 
     [Authorize(Roles = "Admin")]
     [HttpGet]
-    public async Task<IActionResult> GetAll() => Ok(await context.Tickets.ToListAsync());
+    public async Task<IActionResult> GetAll() => Ok(await ticketService.GetAllAsync());
 
     [Authorize(Roles = "Admin")]
     [HttpPut("{id}")]
     public async Task<IActionResult> Update(Guid id, TicketUpdateDto dto)
     {
-        var ticket = await context.Tickets.FindAsync(id);
+        var ticket = await ticketService.GetByIdAsync(id);
         if (ticket == null) return NotFound();
 
         ticket.Status = dto.Status;

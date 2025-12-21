@@ -3,12 +3,13 @@ using Microsoft.AspNetCore.Mvc;
 using TicketingSystem.API.Data;
 using TicketingSystem.API.DTOs;
 using TicketingSystem.API.Services;
+using TicketingSystem.API.Services.Interfaces;
 
 namespace TicketingSystem.API.Controllers
 {
     [ApiController]
     [Route("auth")]
-    public class AuthController(AppDbContext context, AuthService authService) : ControllerBase
+    public class AuthController(AppDbContext context, IAuthService authService) : ControllerBase
     {
         [HttpPost("login")]
         public IActionResult Login([FromBody] LoginDto dto)

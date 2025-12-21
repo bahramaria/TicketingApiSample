@@ -5,10 +5,11 @@ using System.Security.Claims;
 using System.Text;
 
 using TicketingSystem.API.Models;
+using TicketingSystem.API.Services.Interfaces;
 
 namespace TicketingSystem.API.Services;
 
-public class AuthService(IConfiguration configuration)
+public partial class AuthService(IConfiguration configuration) : IAuthService
 {
     public string HashPassword(string password) => BCrypt.Net.BCrypt.HashPassword(password);
 

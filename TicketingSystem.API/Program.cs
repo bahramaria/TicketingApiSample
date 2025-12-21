@@ -1,12 +1,15 @@
 
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
 using System.Text;
 
 using TicketingSystem.API.Data;
+using TicketingSystem.API.Infrastructure.DependencyInjection;
+using TicketingSystem.API.Middlewares;
 using TicketingSystem.API.Services;
-using Microsoft.EntityFrameworkCore;
+using TicketingSystem.API.Services.Interfaces;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -42,10 +45,8 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseSqlite("Data Source=ticketing.db"));
+builder.Services.AddApplicationServices();
 
-builder.Services.AddScoped<AuthService>();
 
 var jwtKey = builder.Configuration["JwtSettings:Key"];
 if (string.IsNullOrEmpty(jwtKey))
@@ -54,8 +55,10 @@ if (string.IsNullOrEmpty(jwtKey))
 }
 var key = Encoding.UTF8.GetBytes(jwtKey);
 
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-    .AddJwtBearer(options => {
+builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuerSigningKey = true,
@@ -65,12 +68,13 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
         };
     });
 
+
 var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
 {
     var context = scope.ServiceProvider.GetRequiredService<AppDbContext>();
-    var authService = scope.ServiceProvider.GetRequiredService<AuthService>();
+    var authService = scope.ServiceProvider.GetRequiredService<IAuthService>();
     DbInitializer.Seed(context, authService);
 }
 
@@ -84,4 +88,5 @@ app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
 
+app.UseMiddleware<RequestLoggingMiddleware>();
 app.Run();
